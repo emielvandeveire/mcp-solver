@@ -64,6 +64,8 @@ class SetupTest:
             ("z3", "review"),
             ("asp", "instructions"),
             ("asp", "review"),
+            ("idp", "instructions"),
+            ("idp", "review"),
         ]
 
         for mode, prompt_type in prompts_to_test:

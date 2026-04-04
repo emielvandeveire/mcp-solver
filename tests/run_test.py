@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unified Test Runner for MCP Solvers (MiniZinc, PySAT, Z3, ASP)
+Unified Test Runner for MCP Solvers (MiniZinc, PySAT, Z3, ASP, IDP-Z3)
 Runs problems through the appropriate test-client.
 """
 
@@ -33,6 +33,7 @@ from src.mcp_solver.core.prompt_loader import get_prompt_path
 from tests.test_config import (
     ASP_PROBLEMS_DIR,
     DEFAULT_TIMEOUT,
+    IDP_PROBLEMS_DIR,
     MAXSAT_PROBLEMS_DIR,
     MCP_CLIENT_DIR,
     MZN_PROBLEMS_DIR,
@@ -266,6 +267,14 @@ SOLVER_CONFIGS = {
         "command_template": 'cd {mcp_client_dir} && uv run test-client --query {query_path} --server "uv run mcp-solver-asp"',
         "model_ext": ".lp",
         "results_subdir": "asp",
+        "needs_server_arg": True,
+    },
+    "idp": {
+        "solver_mode": "idp",
+        "problems_dir": IDP_PROBLEMS_DIR,
+        "command_template": 'cd {mcp_client_dir} && uv run test-client --query {query_path} --server "uv run mcp-solver-idp"',
+        "model_ext": ".idp",
+        "results_subdir": "idp",
         "needs_server_arg": True,
     },
 }
@@ -705,7 +714,7 @@ def main():
     parser.add_argument(
         "solver",
         choices=SOLVER_CONFIGS.keys(),
-        help="Specify the solver type to test (mzn, pysat, z3, asp)",
+        help="Specify the solver type to test (mzn, pysat, z3, maxsat, asp, idp)",
     )
     parser.add_argument("--problem", help="Path to specific problem file (.md)")
     parser.add_argument(

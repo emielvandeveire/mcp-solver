@@ -46,8 +46,11 @@ asp = [
     "clingo>=5.8.0",
     "dumbo-asp>=0.3.16",
 ]
+idp = [
+    "idp-engine",
+]
 all = [
-    "mcp-solver[mzn,z3,pysat,asp,client,dev]",
+    "mcp-solver[mzn,z3,pysat,asp,idp,client,dev]",
 ]
 dev = [
     "coverage>=7.7.1",
@@ -57,6 +60,7 @@ dev = [
 
 [project.scripts]
 test-setup-asp = "mcp_solver.asp.test_setup:main"
+test-setup-idp = "mcp_solver.idp.test_setup:main"
 test-setup-mzn = "mcp_solver.mzn.test_setup:main"
 test-setup-z3 = "mcp_solver.z3.test_setup:main"
 test-setup-pysat = "mcp_solver.pysat.test_setup:main"
@@ -68,6 +72,7 @@ mcp-solver-z3 = "mcp_solver.core.__main__:main_z3"
 mcp-solver-pysat = "mcp_solver.core.__main__:main_pysat"
 mcp-solver-maxsat = "mcp_solver.core.__main__:main_maxsat"
 mcp-solver-asp = "mcp_solver.core.__main__:main_asp"
+mcp-solver-idp = "mcp_solver.core.__main__:main_idp"
 test-client = "mcp_solver.client.client:main_cli"
 run-test = "tests.run_test:main"
 
@@ -153,3 +158,6 @@ warn_unused_configs = true
 
 [tool.test_client]
 recursion_limit = 200
+
+[tool.uv]
+override-dependencies = ["z3-solver>=4.14.1.0"]

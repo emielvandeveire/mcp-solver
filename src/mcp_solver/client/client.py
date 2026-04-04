@@ -77,6 +77,7 @@ MODE_SERVER_ARGS = {
     "pysat": ["run", "mcp-solver-pysat"],
     "maxsat": ["run", "mcp-solver-maxsat"],
     "asp": ["run", "mcp-solver-asp"],
+    "idp": ["run", "mcp-solver-idp"],
 }
 
 # Global Rich Console instance with color support
@@ -1104,6 +1105,8 @@ async def main():
             mode = "pysat"
         elif "asp" in server_cmd:
             mode = "asp"
+        elif "idp" in server_cmd:
+            mode = "idp"
     else:
         # Default to MiniZinc if no mode or server specified
         mode = "mzn"

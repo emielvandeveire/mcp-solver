@@ -68,6 +68,22 @@ def main_asp():
     return server_main()
 
 
+def main_idp():
+    """Entry point for IDP-Z3 mode"""
+    try:
+        import idp_engine
+    except ImportError:
+        print("IDP-Z3 dependencies not installed. Please install with:")
+        print("    uv pip install -e '.[idp]'")
+        return 1
+
+    from .server import main as server_main
+
+    # Set command line arguments for IDP mode
+    sys.argv = [sys.argv[0], "--idp"]
+    return server_main()
+
+
 if __name__ == "__main__":
     try:
         sys.exit(main())
