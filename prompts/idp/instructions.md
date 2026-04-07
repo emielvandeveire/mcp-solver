@@ -80,38 +80,6 @@ The model items behave like a standard programming list with these exact semanti
 - Indices only change when an operation succeeds. If `add_item`, `replace_item`, or `delete_item` returns an error, the model is unchanged and item indices remain exactly the same.
 - Specifically for `add_item`: do not advance your intended insertion index after a failed call. Try again with the same index once the cause of the error is fixed.
 
-## Tool Input and Output Details
-
-1. **clear_model**
-   - **Input:** No arguments.
-   - **Output:** Confirmation that the model has been cleared.
-
-2. **add_item**
-   - **Input:**
-     - `index` (integer): Position to insert the new FO(·) block.
-     - `content` (string): The complete FO(·) block to add.
-   - **Output:** Confirmation and the current (truncated) model.
-   - **Index behavior on error:** If the call fails (e.g., invalid index, malformed content), the model is not modified and no indices shift.
-
-3. **replace_item**
-   - **Input:**
-     - `index` (integer): Index of the item to replace.
-     - `content` (string): The new FO(·) block.
-   - **Output:** Confirmation and the updated (truncated) model.
-
-4. **delete_item**
-   - **Input:**
-     - `index` (integer): Index of the item to delete.
-   - **Output:** Confirmation and the updated (truncated) model.
-
-5. **solve_model**
-   - **Input:**
-     - `timeout` (number): Time in seconds allowed for solving (between 1 and 30 seconds).
-     - `reasoning_task` (string): The reasoning task to perform (see section below).
-   - **Output:**
-     - A JSON object with:
-       - **status:** `"SAT"`, `"UNSAT"`, or `"TIMEOUT"`.
-       - **solution:** (If applicable) The solution object when the model is satisfiable.
 
 ## Reasoning Tasks
 
@@ -130,18 +98,6 @@ IDP-Z3 supports eight distinct forms of reasoning over a knowledge base. Select 
 
 **Key principle:** The vocabulary and theory do not change between tasks. Only the reasoning task and any additional data in the structure change.
 
-## Model Solving and Verification
-
-- **Solution Verification:** After solving, verify that the returned solution satisfies all constraints in the theory. If the model is satisfiable (`SAT`), you will receive both the status and the solution; otherwise, only the status is provided.
-- **UNSAT is valid:** If the theory is unsatisfiable given the structure, `UNSAT` is a correct and meaningful result. It means the constraints jointly have no solution.
-- **Semantic check:** If the KB is UNSAT before any query-specific data is added, this likely indicates a mistake in the theory — not an inherent property of the domain.
-
-## Model Modification Guidelines
-
-- **Comments:** Combine comments with the block they describe. A comment alone is not a standalone item.
-- **Combining similar parts:** Group related type declarations or related sentences in the same item.
-- **Incremental Changes:** Use `replace_item` for small edits (e.g., changing a constant value or fixing a formula). This avoids rebuilding the entire model.
-- **When to Clear:** Use `clear_model` only when the structure of the problem changes fundamentally and starting over is more efficient.
 
 ## Blueprint: Recommended FO(·) KB Structure
 
@@ -152,54 +108,26 @@ A typical IDP-Z3 knowledge base for MCP Solver should follow this four-item stru
 3. **Theory block:** Logical sentences — implications, biconditionals, quantified formulas, definitions.
 4. **Reasoning task call:** The specific task to execute (Model Expansion, Optimization, etc.).
 
-**Example — Car Insurance:**
-
-```idp
-// Item 0: Vocabulary
-vocabulary V {
-  type Customer := {Ann, Brit}
-  type Car := {Sedan, SUV, Truck}
-  risk_factor: Car -> Real
-  age: Customer -> Int
-  car_value: -> Real
-  premium: -> Real
-  car_type: -> Car
-  applicant: Customer -> Bool
-}
-
-// Item 1: Structure (known data)
-structure S : V {
-  age := {Ann -> 16, Brit -> 32}.
-  risk_factor := {Sedan -> 1.03, SUV -> 1.10, Truck -> 1.15}.
-}
-
-// Item 2: Theory (constraints and definitions)
-theory T : V {
-  // Every applicant must be an adult.
-  !p in Customer: applicant(p) => age(p) >= 18.
-  // Insurance premium calculation.
-  premium() = (car_value() / 100) * risk_factor(car_type()).
-}
-
-// Item 3: Reasoning task (e.g., Model Expansion)
-// Ask: given car_value = 20000 and car_type = Sedan, what is the premium?
-```
 
 ## FO(·) Syntax Reference
 
 ### Types
 ```idp
-type Person := {Ann, Bob, Carol}   // Enumerated type
-type Score := {1..10}              // Integer range type
+type Person := {Ann, Bob, Carol}   // Enumerated type (nullary constructors)
+type Score  := {1..10}             // Integer range type
 ```
+> **Critical rule:** Every identifier used in a structure or theory must belong to an enumerated type declared in the vocabulary. You cannot reference `Tweety` in a structure unless `Tweety` appears inside `type Entity := {Tweety, ...}` in the vocabulary. Forgetting this is the single most common cause of "Symbol not in vocabulary" errors.
 
 ### Predicates and Functions
 ```idp
-eligible: Person -> Bool           // Unary predicate
-friends: Person * Person -> Bool   // Binary predicate
-age: Person -> Int                 // Function returning integer
-risk: Person -> Real               // Function returning real
+eligible: Person -> Bool           // Unary predicate (returns Bool)
+friends:  Person * Person -> Bool  // Binary predicate
+age:      Person -> Int            // Function returning integer
+risk:     Person -> Real           // Function returning real
+premium:           -> Real         // Nullary function (constant), called as premium()
 ```
+
+> **Note:** Predicates return `Bool`. Functions return a typed value. Do not mix them. A nullary function `f` must always be called as `f()`, never as `f`.
 
 ### Theory Sentences
 ```idp
@@ -215,8 +143,8 @@ risk: Person -> Real               // Function returning real
 // Negation
 !p in Person: ~(boy(p) & girl(p)).
 
-// Aggregates
-!p in Person: total(p) = sum{ score(p, c) | c in Course }.
+// Aggregates (sum over multiset)
+!p in Person: total(p) = sum{{ score(p, c) | c in Course }}.
 
 // Count
 #{p in Person: eligible(p)} >= 1.
@@ -228,7 +156,7 @@ premium() = (car_value() / 100) * risk_factor(car_type()).
 ### Structure Assignments
 ```idp
 structure S : V {
-  age := {Ann -> 25, Bob -> 17}.
+  age      := {Ann -> 25, Bob -> 17}.
   car_type := Sedan.
   car_value := 20000.
 }
@@ -236,44 +164,142 @@ structure S : V {
 
 ## Grammar Quick Reference (FO(·) Constraints)
 
-| Construct | FO(·) Syntax |
-|---|---|
-| Conjunction | `expr1 & expr2` |
-| Disjunction (inclusive) | `expr1 \| expr2` |
-| Negation | `~expr` |
-| Implication | `expr1 => expr2` |
-| Biconditional | `expr1 <=> expr2` |
-| Exclusive or | `expr1 <=> ~expr2` |
-| Universal quantification | `!x in Type: expr` |
-| Existential quantification | `?x in Type: expr` |
-| Count aggregate | `#{x in Type: expr}` |
-| Sum aggregate | `sum{ f(x) \| x in Type: cond }` |
-| Arithmetic comparisons | `<`, `>`, `=<`, `>=`, `=`, `~=` |
-| Absolute value | `abs(expr)` |
+| Construct | FO(·) Syntax | Notes |
+|---|---|---|
+| Conjunction | `expr1 & expr2` | |
+| Disjunction | `expr1 \| expr2` | Use `\|`, not `\/` |
+| Negation | `~expr` | |
+| Implication | `expr1 => expr2` | |
+| Biconditional | `expr1 <=> expr2` | |
+| Exclusive or | `expr1 <=> ~expr2` | |
+| Universal quantification | `!x in Type: expr` | |
+| Existential quantification | `?x in Type: expr` | |
+| Unique existential | `#{x in Type: expr} = 1` | **Do not use `?!`; it is not valid syntax** |
+| Count aggregate | `#{x in Type: expr}` | |
+| Sum aggregate (multiset) | `sum{{ f(x) \| x in Type: cond }}` | Double braces `{{ }}` for multisets |
+| Arithmetic comparisons | `<`, `>`, `=<`, `>=`, `=`, `~=` | Note: less-than-or-equal is `=<`, not `<=` |
+| Absolute value | `abs(expr)` | Built-in for Int and Real |
 
 **Note on Closed World Assumption (CWA):** IDP-Z3 always uses the CWA. All type extensions must be fully enumerated in the vocabulary. If open-world reasoning is needed, add an explicit `unknown` element to each relevant type.
 
-## Best Practices
+## Critical Syntax Rules (Read Before Writing Any Theory)
 
-- **Separate knowledge from queries.** Put domain rules in the theory and specific case data in the structure. This allows you to reuse the theory for many different reasoning tasks without changes.
-- **Use clear, descriptive names** for types, predicates, and functions.
-- **Annotate each symbol** with its natural language meaning as a comment.
-- **Think about implicit constraints.** For example: if someone studies a course they are a student; nobody can be both a boy and a girl; a fixed order requires that no two elements share the same position.
-- **Prefer biconditionals over implications** when a property holds exactly when certain conditions are met.
-- **Use exclusive or** (`<=> ~`) rather than inclusive or when "or" in natural language means "one or the other, not both."
-- **Group related sentences** together in the theory block.
-- **Test incrementally:** Add vocabulary and a small theory, solve, then expand.
+These are the mistakes most commonly made. Violating any of these will produce a syntax or runtime error.
 
-## Common Pitfalls
+### 1. All domain elements must be declared in the vocabulary
 
-- **Missing type enumeration:** IDP-Z3 requires all type extensions to be fully listed. Omitting elements leads to incorrect or unexpected results.
-- **Confusing predicates and functions:** Predicates return `Bool`; functions return a typed value. Do not mix them.
-- **Using open-world reasoning implicitly:** IDP-Z3 is CWA only. If something is not stated, it is assumed false. Add an `unknown` element if OWA is needed.
-- **Putting query data in the theory:** Specific case data (e.g., "Ann is 25") belongs in the structure, not in the theory. Mixing them prevents knowledge reuse.
-- **Forgetting periods** at the end of theory sentences.
-- **Untyped or ungrounded variables:** Every variable must be quantified over a declared type.
-- **Redundant or contradictory sentences:** An inconsistent theory is always UNSAT regardless of the structure. Run a satisfiability check on the theory alone (without case data) to detect this early.
-- **Choosing the wrong reasoning task:** Model Expansion finds solutions; Propagation finds certainties; Optimization finds extrema. Make sure the task matches the question.
+Every name used in a structure or theory (e.g. `Tweety`, `Ann`, `Sedan`) must be an element of an enumerated type in the vocabulary block. Declaring them only in the structure is not sufficient.
+
+```idp
+// WRONG — Tweety is not declared anywhere
+vocabulary V {
+  type Entity          // open, no elements
+  bird: Entity -> Bool
+}
+structure S : V {
+  bird := {Tweety}.    // ERROR: Tweety not in vocabulary
+}
+
+// CORRECT
+vocabulary V {
+  type Entity := {Tweety, Opus, Woody, Polly}
+  bird: Entity -> Bool
+}
+structure S : V {
+  bird := {Tweety, Opus, Woody}.
+}
+```
+
+### 2. Use `|` for disjunction, not `\/`
+
+The ASCII disjunction operator is `|`. The operator `\/` is not valid and will cause a parse error.
+
+```idp
+// WRONG
+!x in Person: p(x) \/ q(x).
+
+// CORRECT
+!x in Person: p(x) | q(x).
+```
+
+### 3. Unique existential quantification: use a cardinality constraint, not `?!`
+
+IDP-Z3 does not support the `?!` operator. Express "exactly one" using the count aggregate or the generalised existential shorthand.
+
+```idp
+// WRONG — ?! is not valid syntax
+!g in Guest: ?!s in Seat: seated(g) = s.
+
+// CORRECT — option A: cardinality constraint
+!g in Guest: #{s in Seat: seated(g) = s} = 1.
+
+// CORRECT — option B: generalised existential (shorthand)
+!g in Guest: ?=1 s in Seat: seated(g) = s.
+```
+
+### 4. Functions are total by default; use `seated(g) = s` not `seated(g, s)`
+
+In FO(·), a function `f: A -> B` maps every element of A to exactly one element of B. Access its value as `f(a) = b`. Do not confuse functions with predicates.
+
+```idp
+// WRONG — seated is a function, not a predicate
+seated(An, 1).
+
+// CORRECT
+seated(An) = 1.
+```
+
+### 5. Every theory sentence must end with a period `.`
+
+```idp
+// WRONG
+!p in Person: eligible(p) => age(p) >= 18
+
+// CORRECT
+!p in Person: eligible(p) => age(p) >= 18.
+```
+
+### 6. Less-than-or-equal is `=<`, not `<=`
+
+```idp
+// WRONG
+age(p) <= 18.
+
+// CORRECT
+age(p) =< 18.
+```
+
+### 7. Nullary functions must be called with `()`
+
+```idp
+// WRONG — premium is a nullary function
+premium = 100.
+
+// CORRECT
+premium() = 100.
+```
+
+### 8. Adjacency: use `abs()` rather than arithmetic on enumerated type elements
+
+When checking whether two values differ by 1, use `abs(s1 - s2) = 1`. Arithmetic like `s - 1` on an enumerated integer type works, but ensure the type is declared as a numeric range (`{1..3}`), not as named constructors.
+
+```idp
+// Robust adjacency check for seats declared as {1..3}
+!s1, s2 in Seat: abs(s1 - s2) = 1 => ~(seated(An) = s1 & seated(Bert) = s2).
+```
+
+## Model Solving and Verification
+
+- **Solution Verification:** After solving, verify that the returned solution satisfies all constraints in the theory. If the model is satisfiable (`SAT`), you will receive both the status and the solution; otherwise, only the status is provided.
+- **UNSAT is valid:** If the theory is unsatisfiable given the structure, `UNSAT` is a correct and meaningful result. It means the constraints jointly have no solution.
+- **Semantic check:** If the KB is UNSAT before any query-specific data is added, this likely indicates a mistake in the theory, not an inherent property of the domain.
+
+## Model Modification Guidelines
+
+- **Comments:** Combine comments with the block they describe. A comment alone is not a standalone item.
+- **Combining similar parts:** Group related type declarations or related sentences in the same item.
+- **Incremental Changes:** Use `replace_item` for small edits (e.g., changing a constant value or fixing a formula). This avoids rebuilding the entire model.
+- **When to Clear:** Use `clear_model` only when the structure of the problem changes fundamentally and starting over is more efficient.
 
 ## Minimal Working Example
 
@@ -283,23 +309,23 @@ Suppose you want to determine which customers are eligible for car insurance and
 // Item 0: Vocabulary
 vocabulary V {
   type Customer := {Ann, Brit}
-  type Car := {Sedan, SUV, Truck}
-  age: Customer -> Int
-  risk_factor: Car -> Real
-  car_value: -> Real
-  car_type: -> Car
-  premium: -> Real
-  applicant: Customer -> Bool
-  eligible: Customer -> Bool
+  type Car      := {Sedan, SUV, Truck}
+  age:         Customer -> Int
+  risk_factor: Car      -> Real
+  car_value:            -> Real
+  car_type:             -> Car
+  premium:              -> Real
+  applicant:   Customer -> Bool
+  eligible:    Customer -> Bool
 }
 
 // Item 1: Structure
 structure S : V {
-  age := {Ann -> 25, Brit -> 17}.
+  age         := {Ann -> 25, Brit -> 17}.
   risk_factor := {Sedan -> 1.03, SUV -> 1.10, Truck -> 1.15}.
-  car_value := 20000.
-  car_type := Sedan.
-  applicant := {Ann -> true, Brit -> true}.
+  car_value   := 20000.
+  car_type    := Sedan.
+  applicant   := {Ann -> true, Brit -> true}.
 }
 
 // Item 2: Theory
@@ -316,11 +342,13 @@ theory T : V {
 
 ## Advanced Patterns
 
-### Fixed Ordering Constraints
-Use this when the problem introduces a strict ordering (e.g., rank people by consumption):
+### Fixed Ordering / Injective Assignment
+
+When assigning positions or ranks, enforce that no two elements share the same value:
+
 ```idp
-// No two elements share the same position in the order.
-!p1 in Person: !p2 in Person: position(p1) = position(p2) => p1 = p2.
+// No two guests share the same seat
+!g1, g2 in Guest: seated(g1) = seated(g2) => g1 = g2.
 ```
 
 ### Simulating Open World Assumption
@@ -332,9 +360,10 @@ This allows the reasoner to treat `unknown` as a stand-in for any unspecified in
 
 ### Aggregates with Conditions
 ```idp
-// Total consumption is the sum of drink consumptions the person is dependent on.
-!p in Person: total(p) = sum{ drink_consumption(p, d) | d in Drink: dependent(p, d) }.
+// Total is the sum of consumptions the person is dependent on.
+!p in Person: total(p) = sum{{ drink_consumption(p, d) | d in Drink: dependent(p, d) }}.
 ```
+Note the double braces `{{ }}` for multiset aggregates (`sum`, `min`, `max`). Single braces `{ }` are for set aggregates.
 
 ### Multi-step Reasoning
 For complex nested questions, break them into sequential reasoning tasks:
@@ -347,19 +376,46 @@ Before adding query-specific data to the structure, verify the theory alone is s
 - If SAT: the domain rules are consistent.
 - If UNSAT: there is a contradiction in the theory that must be fixed before proceeding.
 
+## Best Practices
+
+- **Separate knowledge from queries.** Put domain rules in the theory and specific case data in the structure. This allows you to reuse the theory for many different reasoning tasks without changes.
+- **Use clear, descriptive names** for types, predicates, and functions.
+- **Annotate each symbol** with its natural language meaning as a comment.
+- **Think about implicit constraints.** For example: if someone studies a course they are a student; nobody can be both a boy and a girl; a fixed order requires that no two elements share the same position.
+- **Prefer biconditionals over implications** when a property holds exactly when certain conditions are met.
+- **Use exclusive or** (`<=> ~`) rather than inclusive or when "or" in natural language means "one or the other, not both."
+- **Group related sentences** together in the theory block.
+- **Test incrementally:** Add vocabulary and a small theory, solve, then expand.
+
+## Common Pitfalls
+
+| Pitfall | Symptom | Fix |
+|---|---|---|
+| Domain elements not enumerated in vocabulary | "Symbol not in vocabulary: X" | Add all names to the type declaration in the vocabulary: `type T := {X, Y, Z}` |
+| Using `?!` for unique existential | Parse error at `?!` | Use `#{x in T: ...} = 1` or `?=1 x in T: ...` |
+| Using `\/` for disjunction | Parse error at `\/` | Use `\|` |
+| Using `<=` for less-than-or-equal | Parse error or wrong semantics | Use `=<` |
+| Forgetting `.` at end of theory sentence | Parse error | Add `.` after every sentence |
+| Calling a nullary function without `()` | Runtime or parse error | Always write `f()` |
+| Mixing functions and predicates | Type error | Functions use `=`; predicates are applied directly |
+| Query data in theory instead of structure | Theory is UNSAT for other inputs | Move specific facts (values, instances) to the structure |
+| Using `sum{ }` (single braces) for multiset sum | Wrong or missing results | Use `sum{{ }}` (double braces) for multiset aggregates |
+| Quantifying over `Int` or `Real` without bounds | Performance issues or timeout | Always quantify over a finite enumerated type or bounded range |
+
 ## Self-Refinement Workflow
 
 When the solver returns an error or UNSAT unexpectedly:
 
-1. **Syntax error:** Check that all sentences end with `.`, all blocks close with `}`, and all variables are quantified over declared types.
-2. **Semantic error (unexpected UNSAT):** Temporarily remove constraints one by one to find the conflicting sentence. IDP-Z3 can generate a minimal unsatisfiable subset to assist.
-3. **Wrong reasoning task:** Re-read the question and check the task table above to confirm you are using the correct form of reasoning.
-4. **Data in wrong block:** Confirm that domain rules are in the theory and case-specific facts are in the structure.
+1. **Syntax error:** Check that all sentences end with `.`, all blocks close with `}`, you use `|` (not `\/`) for disjunction, and no `?!` appears anywhere.
+2. **"Symbol not in vocabulary":** Check that every name used in the structure or theory is declared inside a `type T := {...}` enumeration in the vocabulary.
+3. **Unexpected UNSAT:** Temporarily remove theory sentences one by one to find the conflicting constraint. Run a satisfiability check on the theory alone (without case data) to isolate the issue.
+4. **Wrong reasoning task:** Re-read the question and check the Reasoning Tasks table to confirm you are using the correct form of reasoning.
+5. **Data in wrong block:** Confirm that domain rules are in the theory and case-specific facts are in the structure.
 
 ## Final Notes
 
 - **Review return information** after each tool call.
-- **Maintain a consistent structure:** vocabulary, structure, theory, task.
+- **Maintain a consistent structure:** vocabulary -> structure -> theory -> task.
 - **Verify solutions** after solving to ensure all theory sentences are satisfied.
 - **Reuse your KB:** Once the vocabulary and theory are built, answer multiple questions by changing only the structure or the reasoning task.
 
