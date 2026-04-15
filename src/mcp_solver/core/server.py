@@ -316,7 +316,7 @@ async def serve() -> None:
                         "pysat": "Solve the current PySAT Python model with a timeout parameter. Required parameter: 'timeout'.",
                         "maxsat": "Solve the current MaxSAT optimization model with a timeout parameter. Required parameter: 'timeout'.",
                         "asp": "Solve the current ASP model with a timeout parameter. Required parameter: 'timeout'.",
-                        "idp": "Solve the current IDP-Z3 model with a timeout parameter. Required parameter: 'timeout'.",
+                        "idp": "Solve the current IDP-Z3 model. Required parameter: 'timeout'. Optional parameter: 'reasoning_task' (e.g., 'model_expand', 'propagate').",
                     }
                 ),
                 inputSchema={
@@ -325,6 +325,10 @@ async def serve() -> None:
                         "timeout": {
                             "description": f"Solve timeout in seconds (minimum: {MIN_SOLVE_TIMEOUT.seconds}, maximum: {MAX_SOLVE_TIMEOUT.seconds})",
                             "type": "number",
+                        },
+                        "reasoning_task": {
+                            "description": "The specific reasoning task to perform (IDP-Z3 only). Examples: 'model_expand', 'propagate'. Default is 'model_expand'.",
+                            "type": "string",
                         }
                     },
                     "required": ["timeout"],
@@ -505,10 +509,13 @@ async def serve() -> None:
                         # Run the solve_model with timeout and catch any exceptions
                         async with asyncio.timeout(safe_timeout):
                             try:
+                                # Dynamically build arguments to remain compatible with other solvers
+                                solve_kwargs = {"timeout": timeout_val}
+                                if IDP_MODE and "reasoning_task" in arguments:
+                                    solve_kwargs["reasoning_task"] = arguments["reasoning_task"]
+
                                 # Call the model manager to solve the model
-                                result = await model_mgr.solve_model(
-                                    timeout=timeout_val
-                                )
+                                result = await model_mgr.solve_model(**solve_kwargs)
 
                                 # Check if the result indicates a timeout
                                 if (

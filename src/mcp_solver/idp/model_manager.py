@@ -1,11 +1,12 @@
 from datetime import timedelta
-from idp_engine import IDP, model_expand 
+from idp_engine import IDP, model_expand, model_propagate 
 from ..core.base_model_manager import BaseModelManager
+from .solution import export_solution
 
 class IDPModelManager(BaseModelManager):
     """
-    Simpele IDP model manager voor de MVP.
-    Slaat items op en voert IDP-Z3 uit bij solve_model.
+    IDP model manager.
+    Stores items and executes the selected IDP-Z3 task in solve_model.
     """
 
     def __init__(self):
@@ -14,15 +15,17 @@ class IDPModelManager(BaseModelManager):
 
     async def solve_model(self, timeout: timedelta, reasoning_task: str = "model_expand") -> dict:
         if not self.code_items:
-            return {"satisfiable": False, "status": "error", "error_message": "Model is empty"}
+            result = export_solution(Exception("Model is empty"), reasoning_task)
+            self.last_solution = result
+            return result
 
         idp_code = "\n".join(self.code_items)
 
         try:
-            # 1. Parse de code
+            # 1. Parse the code into an IDP model
             kb = IDP.from_str(idp_code)
             
-            # 2. Haal de Theory en Structure uit het geparste model
+            # 2. Extract the Theory and Structure from the parsed model
             theories = list(kb.theories.values())
             structures = list(kb.structures.values())
             
@@ -32,36 +35,26 @@ class IDPModelManager(BaseModelManager):
             T = theories[0]
             S = structures[0]
             
-            # 3. Voer model_expand uit (als LOSSE functie, dus niet kb.model_expand)
-            generator = model_expand(T, S, max=1)
-            models = list(generator)
-
-            if not models:
-                result = {
-                    "satisfiable": False,
-                    "status": "unsat",
-                    "success": True
-                }
+            # 3. Execute the reasoning task and send raw data to export_solution
+            if reasoning_task == "model_expand":
+                generator = model_expand(T, S, max=1)
+                models = list(generator)
+                result = export_solution(data=models, reasoning_task=reasoning_task)
+                
+            elif reasoning_task == "propagate":
+                generator = model_propagate(T, S)
+                propagated_facts = list(generator)
+                result = export_solution(data=propagated_facts, reasoning_task=reasoning_task)
+                
             else:
-                model_str = str(models[0]) 
-                result = {
-                    "satisfiable": True,
-                    "status": "sat",
-                    "success": True,
-                    "solution": model_str
-                }
+                raise ValueError(f"Reasoning task '{reasoning_task}' is currently not supported.")
             
             self.last_solution = result
             return result
 
         except Exception as e:
-            error_msg = str(e)
-            result = {
-                "satisfiable": False,
-                "status": "error",
-                "success": True,
-                "error_message": f"System or Syntax Error in IDP: {error_msg}"
-            }
+            # Catch system/syntax errors gracefully and pass them through the formatter
+            result = export_solution(data=e, reasoning_task=reasoning_task)
             self.last_solution = result
             return result
 
