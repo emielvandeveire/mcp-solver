@@ -42,13 +42,13 @@ def export_solution(
                 solution_data = {
                     "satisfiable": False, 
                     "status": "unsat", 
-                    "solution": "No models found"
+                    "solution": {"result": "No models found"} # Wrapped in dict
                 }
             else:
                 solution_data = {
                     "satisfiable": True, 
                     "status": "sat", 
-                    "solution": str(data[0])
+                    "solution": {"model_output": str(data[0])} # Wrapped in dict
                 }
 
         elif reasoning_task == "propagate":
@@ -62,10 +62,20 @@ def export_solution(
                     "error_message": "Theory is unsatisfiable (contradiction found during propagation). Check your exceptions and default rules."
                 }
             else:
+                # Build a dictionary mapping facts to True/False 
+                solution_dict = {}
+                for s in prop_strings:
+                    if s == "No more consequences.":
+                        continue
+                    if s.startswith("Not "):
+                        solution_dict[s[4:]] = False # Ex: "Not flies(Opus)" -> {"flies(Opus)": False}
+                    else:
+                        solution_dict[s] = True # Ex: "flies(Tweety)" -> {"flies(Tweety)": True}
+                
                 solution_data = {
                     "satisfiable": True, 
                     "status": "propagated", 
-                    "solution": "\n".join(prop_strings)
+                    "solution": solution_dict
                 }
             
         else:
