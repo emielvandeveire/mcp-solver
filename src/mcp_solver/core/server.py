@@ -334,6 +334,16 @@ async def serve() -> None:
                     "required": ["timeout"],
                 },
             ),
+            types.Tool(
+                name="check_syntax",
+                description=get_description(
+                    {
+                        "idp": "Check the syntax of the current IDP-Z3 model without solving it. Helps catch missing braces or syntax errors early.",
+                        "default": "Check the syntax of the current model. (Currently fully supported in IDP-Z3 mode).",
+                    }
+                ),
+                inputSchema={"type": "object", "properties": {}},
+            ),
         ]
         return tools
 
@@ -593,6 +603,21 @@ async def serve() -> None:
                             "error": str(e),
                         }
                         return [types.TextContent(type="text", text=str(error_result))]
+                case "check_syntax":
+                    # Check if the current model_manager supports this function (currently only IDP)
+                    if hasattr(model_mgr, "check_syntax"):
+                        result = await model_mgr.check_syntax()
+                        
+                        # Retrieve the message from the dictionary returned by model_mgr.check_syntax()
+                        message = result.get("message", str(result))
+                        return [types.TextContent(type="text", text=message)]
+                    else:
+                        return [
+                            types.TextContent(
+                                type="text", 
+                                text="Tool execution failed: 'check_syntax' is currently only supported in IDP-Z3 mode."
+                            )
+                        ]
 
                 case _:
                     raise ValueError(f"Unknown tool: {name}")

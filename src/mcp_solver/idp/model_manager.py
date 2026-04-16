@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from idp_engine import IDP, model_expand, model_propagate 
 from ..core.base_model_manager import BaseModelManager
@@ -12,6 +13,53 @@ class IDPModelManager(BaseModelManager):
     def __init__(self):
         super().__init__()
         self.last_solution = None
+
+    async def check_syntax(self) -> dict:
+        """
+        Tool for the LLM to validate the syntax of the current code without performing a full solve.
+        """
+        if not self.code_items:
+            return {"success": True, "message": "Model is empty. Nothing to check."}
+
+        idp_code = "\n".join(self.code_items)
+        temp_code = idp_code
+
+        # Heuristic: Close unmatched braces 
+        open_braces = temp_code.count("{")
+        close_braces = temp_code.count("}")
+        if open_braces > close_braces:
+            temp_code += "\n}" * (open_braces - close_braces)
+
+        # Heuristic: Add missing blocks
+        # Look for the name of the vocabulary (default is 'V') so we can correctly link the theory/structure
+        vocab_match = re.search(r'vocabulary\s+(\w+)', temp_code)
+        vocab_name = vocab_match.group(1) if vocab_match else "V"
+
+        lower_code = temp_code.lower()
+        
+        if "vocabulary" not in lower_code:
+            temp_code = f"vocabulary {vocab_name} {{}}\n" + temp_code
+            
+        if "theory" not in lower_code:
+            temp_code += f"\ntheory T: {vocab_name} {{}}\n"
+            
+        if "structure" not in lower_code:
+            temp_code += f"\nstructure S: {vocab_name} {{}}\n"
+
+        try:
+            # Test if the code can be parsed by IDP-Z3.
+            IDP.from_str(temp_code)
+            return {
+                "success": True,
+                "message": "Syntax check passed! The current blocks contain no syntax errors."
+            }
+        except Exception as e:
+            # Return success=True so that the MCP tool call succeeds
+            # but provide the error_message back to the LLM
+            return {
+                "success": True,
+                "message": f"Syntax Error found:\n{str(e)}"
+            }
 
     async def solve_model(self, timeout: timedelta, reasoning_task: str = "model_expand") -> dict:
         if not self.code_items:

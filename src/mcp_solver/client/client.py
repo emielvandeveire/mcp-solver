@@ -922,6 +922,7 @@ def display_combined_stats():
             "delete_item",
             "get_model",
             "solve_model",
+            "check_syntax",
         ]
 
         # Make sure all standard tools are represented in tool_calls

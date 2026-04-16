@@ -11,6 +11,7 @@ The MCP Solver integrates IDP-Z3 solving with the Model Context Protocol, allowi
 - **replace_item**
 - **delete_item**
 - **solve_model**
+- **check_syntax**
 
 These tools let you construct your knowledge base item by item and solve it using IDP-Z3.
 
@@ -386,6 +387,7 @@ Before adding query-specific data to the structure, verify the theory alone is s
 - **Use exclusive or** (`<=> ~`) rather than inclusive or when "or" in natural language means "one or the other, not both."
 - **Group related sentences** together in the theory block.
 - **Test incrementally:** Add vocabulary and a small theory, solve, then expand.
+- **CRITICAL WORKFLOW RULE:** before you EVER call solve_model, you MUST call the check_syntax tool first to validate your logic. If check_syntax returns an error, use replace_item to fix the error before trying to solve.
 
 ## Common Pitfalls
 
