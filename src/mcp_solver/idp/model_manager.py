@@ -3,6 +3,7 @@ from datetime import timedelta
 from idp_engine import IDP, model_expand, model_propagate 
 from ..core.base_model_manager import BaseModelManager
 from .solution import export_solution
+from .error_handling import format_solution_error
 
 class IDPModelManager(BaseModelManager):
     """
@@ -56,9 +57,10 @@ class IDPModelManager(BaseModelManager):
         except Exception as e:
             # Return success=True so that the MCP tool call succeeds
             # but provide the error_message back to the LLM
+            err_dict = format_solution_error(e)
             return {
                 "success": True,
-                "message": f"Syntax Error found:\n{str(e)}"
+                "message": f"Syntax Error found:\n{err_dict['error_message']}"
             }
 
     async def solve_model(self, timeout: timedelta, reasoning_task: str = "model_expand") -> dict:

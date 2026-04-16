@@ -6,6 +6,7 @@ and converting it to a standardized format.
 """
 import logging
 from typing import Any
+from .error_handling import format_solution_error
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,7 @@ def export_solution(
     try:
         # If we receive an Exception, format it directly as an error
         if isinstance(data, Exception):
-            error_solution = {
-                "satisfiable": False,
-                "status": "error",
-                "success": True,  # True is required by MCP, otherwise the server breaks
-                "error_message": f"IDP Error: {str(data)}"
-            }
+            error_solution = format_solution_error(data)
             _LAST_SOLUTION = error_solution
             return error_solution
 
