@@ -95,6 +95,21 @@ def export_solution(
                     "status": "optimal", 
                     "solution": {"model_output": str(data[0])}
                 }
+        
+        elif reasoning_task == "explain":
+            if isinstance(data, tuple) and len(data) == 2:
+                facts, laws = data
+                solution_data = {
+                    "satisfiable": False,
+                    "status": "unsat_explained",
+                    "solution": format_explanation_output(facts, laws)
+                }
+            else:
+                solution_data = {
+                    "satisfiable": False,
+                    "status": "error",
+                    "error_message": f"Expected a tuple of (facts, laws) for the 'explain' task, but got {type(data)}."
+                }
             
         else:
             # Fallback for tasks that are not yet implemented (such as explain, optimize)

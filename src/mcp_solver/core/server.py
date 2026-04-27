@@ -316,7 +316,7 @@ async def serve() -> None:
                         "pysat": "Solve the current PySAT Python model with a timeout parameter. Required parameter: 'timeout'.",
                         "maxsat": "Solve the current MaxSAT optimization model with a timeout parameter. Required parameter: 'timeout'.",
                         "asp": "Solve the current ASP model with a timeout parameter. Required parameter: 'timeout'.",
-                        "idp": "Solve the current IDP-Z3 model. Required parameter: 'timeout'. Optional parameter: 'reasoning_task' (e.g., 'model_expand', 'propagate', 'satisfiability', 'optimize').",
+                        "idp": "Solve the current IDP-Z3 model. Required parameter: 'timeout'. Optional parameter: 'reasoning_task' (e.g., 'model_expand', 'propagate', 'satisfiability', 'optimize', 'explain').",
                     }
                 ),
                 inputSchema={
@@ -327,7 +327,7 @@ async def serve() -> None:
                             "type": "number",
                         },
                         "reasoning_task": {
-                            "description": "The specific reasoning task to perform (IDP-Z3 only). Examples: 'model_expand', 'propagate'. Default is 'model_expand'.",
+                            "description": "The specific reasoning task to perform (IDP-Z3 only). Options: 'model_expand', 'propagate', 'satisfiability', 'optimize', 'explain'. Default is 'model_expand'.",
                             "type": "string",
                         }
                     },

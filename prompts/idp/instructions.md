@@ -92,7 +92,7 @@ IDP-Z3 supports eight distinct forms of reasoning over a knowledge base. Select 
 | **Satisfiability** | Verify if at least one model S exists for a given theory T. | "Is this situation possible?" |
 | **Optimization** | Find the model S of a given T in which a given term t reaches its minimal or maximal value. | "What is the minimum cost / maximum output?" |
 | **Propagation** | Determine which atomic formulas are true or false in all models S of the given theory T. | "What can we conclude with certainty?" |
-| **Explain** | Explain why a given atomic formula is true or false in all models of T, or if T has no models, explain the inconsistency. | "Why is X the case?" / "Why is there no solution?" |
+| **Explain** | Explains why a model is UNSAT. | CRITICAL: Use this if `model_expand` fails with UNSAT. It returns the exact conflicting facts and laws. |
 | **Determine Range** | Determine the range of possible values for a given function term f given a theory T — the set of all values v such that there exists at least one model S of T in which f evaluates to v. | "What values can X have?" |
 | **Relevance** | Determine which symbols σ are relevant, in the sense that there exists a model S of T such that S would no longer be a model if the value of σ in S were different. | "Which inputs actually affect the outcome?" |
 | **Logical Entailment** | Verify whether a given statement φ is logically entailed by theory T. | "Does the knowledge base imply φ?" |
@@ -423,7 +423,7 @@ When the solver returns an error or UNSAT unexpectedly:
 
 1. **Syntax error:** Check that all sentences end with `.`, all blocks close with `}`, you use `|` (not `\/`) for disjunction, and no `?!` appears anywhere.
 2. **"Symbol not in vocabulary":** Check that every name used in the structure or theory is declared inside a `type T := {...}` enumeration in the vocabulary.
-3. **Unexpected UNSAT:** Temporarily remove theory sentences one by one to find the conflicting constraint. Run a satisfiability check on the theory alone (without case data) to isolate the issue.
+3. **Unexpected UNSAT:** If the model returns UNSAT, use the reasoning_task "explain". The solver will return the specific facts and laws that contradict each other. Use this to fix your theory!
 4. **Wrong reasoning task:** Re-read the question and check the Reasoning Tasks table to confirm you are using the correct form of reasoning.
 5. **Data in wrong block:** Confirm that domain rules are in the theory and case-specific facts are in the structure.
 

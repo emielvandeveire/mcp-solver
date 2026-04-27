@@ -1,6 +1,6 @@
 import re
 from datetime import timedelta
-from idp_engine import IDP, model_expand, model_propagate 
+from idp_engine import IDP, model_expand, model_propagate, Theory
 from ..core.base_model_manager import BaseModelManager
 from .solution import export_solution
 from .error_handling import format_solution_error
@@ -106,6 +106,11 @@ class IDPModelManager(BaseModelManager):
                 models = list(generator)
                 optimal_model = [models[-1]] if models else []
                 result = export_solution(data=optimal_model, reasoning_task=reasoning_task)
+                
+            elif reasoning_task == "explain":
+                theory_instance = Theory(T, S)
+                explanation_tuple = theory_instance.explain()
+                result = export_solution(data=explanation_tuple, reasoning_task="explain")
                 
             else:
                 raise ValueError(f"Reasoning task '{reasoning_task}' is currently not supported.")
