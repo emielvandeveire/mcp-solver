@@ -316,7 +316,7 @@ async def serve() -> None:
                         "pysat": "Solve the current PySAT Python model with a timeout parameter. Required parameter: 'timeout'.",
                         "maxsat": "Solve the current MaxSAT optimization model with a timeout parameter. Required parameter: 'timeout'.",
                         "asp": "Solve the current ASP model with a timeout parameter. Required parameter: 'timeout'.",
-                        "idp": "Solve the current IDP-Z3 model. Required parameter: 'timeout'. Optional parameter: 'reasoning_task' (e.g., 'model_expand', 'propagate').",
+                        "idp": "Solve the current IDP-Z3 model. Required parameter: 'timeout'. Optional parameter: 'reasoning_task' (e.g., 'model_expand', 'propagate', 'satisfiability', 'optimize').",
                     }
                 ),
                 inputSchema={

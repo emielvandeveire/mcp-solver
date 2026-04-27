@@ -73,6 +73,28 @@ def export_solution(
                     "status": "propagated", 
                     "solution": solution_dict
                 }
+                
+        elif reasoning_task == "satisfiability":
+            is_sat = bool(data) # true if we have any models
+            solution_data = {
+                "satisfiable": is_sat,
+                "status": "sat" if is_sat else "unsat",
+                "solution": {"result": "The theory is satisfiable." if is_sat else "The theory is unsatisfiable."}
+            }
+
+        elif reasoning_task == "optimize":
+            if not data:
+                solution_data = {
+                    "satisfiable": False, 
+                    "status": "unsat", 
+                    "error_message": "No models found to optimize. The theory might be unsatisfiable."
+                }
+            else:
+                solution_data = {
+                    "satisfiable": True, 
+                    "status": "optimal", 
+                    "solution": {"model_output": str(data[0])}
+                }
             
         else:
             # Fallback for tasks that are not yet implemented (such as explain, optimize)

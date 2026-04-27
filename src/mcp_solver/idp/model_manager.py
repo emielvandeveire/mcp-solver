@@ -96,6 +96,17 @@ class IDPModelManager(BaseModelManager):
                 propagated_facts = list(generator)
                 result = export_solution(data=propagated_facts, reasoning_task=reasoning_task)
                 
+            elif reasoning_task == "satisfiability":
+                generator = model_expand(T, S, max=1)
+                models = list(generator)
+                result = export_solution(data=models, reasoning_task=reasoning_task)
+                
+            elif reasoning_task == "optimize":
+                generator = model_expand(T, S)
+                models = list(generator)
+                optimal_model = [models[-1]] if models else []
+                result = export_solution(data=optimal_model, reasoning_task=reasoning_task)
+                
             else:
                 raise ValueError(f"Reasoning task '{reasoning_task}' is currently not supported.")
             
