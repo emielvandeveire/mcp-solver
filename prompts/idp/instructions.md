@@ -289,6 +289,14 @@ When checking whether two values differ by 1, use `abs(s1 - s2) = 1`. Arithmetic
 !s1, s2 in Seat: abs(s1 - s2) = 1 => ~(seated(An) = s1 & seated(Bert) = s2).
 ```
 
+### 9. Declare ALL symbols: EVERY predicate or function you use in the `theory` MUST be explicitly declared in the `vocabulary` first. Do not invent new predicates in the theory.
+
+### 10. Finding Extremes (Min/Max): DO NOT invent syntax like `min{...} ordered by` or `wrt`. To define an optimal choice in FO(·), use standard First-Order Logic.
+   - Example to find the best option: 
+     `!x in Type: best(x) <=> valid(x) & ~(?y in Type: valid(y) & cost(y) < cost(x)).`
+
+### 11. No ASP/Prolog Wildcards: DO NOT use the underscore (_) as a wildcard variable. FO(·) does not support this. You MUST explicitly quantify every variable. (e.g., Use '!w in WallType: capacity(Nail, w) = 25.' instead of 'capacity(Nail, _) = 25.')
+
 ## Model Solving and Verification
 
 - **Solution Verification:** After solving, verify that the returned solution satisfies all constraints in the theory. If the model is satisfiable (`SAT`), you will receive both the status and the solution; otherwise, only the status is provided.
@@ -388,6 +396,11 @@ Before adding query-specific data to the structure, verify the theory alone is s
 - **Group related sentences** together in the theory block.
 - **Test incrementally:** Add vocabulary and a small theory, solve, then expand.
 - **CRITICAL WORKFLOW RULE:** before you EVER call solve_model, you MUST call the check_syntax tool first to validate your logic. If check_syntax returns an error, use replace_item to fix the error before trying to solve.
+
+### Modeling Best Practices for IDP-Z3
+1. **Use Integers for Ordering and Rankings:** Do NOT create custom Enumerations (e.g., `type Effort = {Easy, Medium, Hard}`) and complex boolean predicates (like `easier(e1, e2)`) to rank items. Instead, map these properties directly to Integers. 
+   *Example:* Use `difficulty: Method -> Int` and assign `{Nail -> 2, Glue -> 1, Screw -> 3}` in the structure. This allows Z3 to easily optimize or compare values using standard math operators (`<`, `>`, `=`).
+2. **Quantifiers:** Never write inline type declarations like `predicate(x: Type) <=>` in the theory block without a universal quantifier (`!`). Always use `! x in Type: predicate(x) <=> ...` or use definition blocks `{ predicate(x) <- ... }`.
 
 ## Common Pitfalls
 
