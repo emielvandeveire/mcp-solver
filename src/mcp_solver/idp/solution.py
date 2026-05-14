@@ -5,12 +5,30 @@ This module provides functions for extracting solution data from IDP solvers
 and converting it to a standardized format.
 """
 import logging
+import re
 from typing import Any
 from .error_handling import format_solution_error
+
+# Matches "term := value." lines emitted in IDP-Z3 model output.
+_ASSIGNMENT_RE = re.compile(r"^\s*(.+?)\s*:=\s*(.+?)\s*\.?\s*$")
 
 logger = logging.getLogger(__name__)
 
 _LAST_SOLUTION = None
+
+
+def format_explanation_output(facts, laws) -> dict[str, Any]:
+    """
+    # Format the (facts, laws) tuple returned by explain into a structured dict
+    """
+    fact_strs = [str(f) for f in (facts or [])]
+    law_strs = [str(l) for l in (laws or [])]
+
+    return {
+        "conflicting_facts": fact_strs,
+        "conflicting_laws": law_strs,
+        "hint": "The facts above (from the structure) together with the laws above (from the theory) are jointly unsatisfiable. Resolve the conflict by relaxing one of the facts or weakening one of the laws.",
+    }
 
 def export_solution(
     data: Any = None,
@@ -109,6 +127,33 @@ def export_solution(
                     "satisfiable": False,
                     "status": "error",
                     "error_message": f"Expected a tuple of (facts, laws) for the 'explain' task, but got {type(data)}."
+                }
+
+        elif reasoning_task == "determine_range":
+            if not data:
+                solution_data = {
+                    "satisfiable": False,
+                    "status": "unsat",
+                    "error_message": "No models found; cannot determine ranges."
+                }
+            else:
+                ranges: dict[str, set[str]] = {}
+                for model in data:
+                    for line in str(model).splitlines():
+                        m = _ASSIGNMENT_RE.match(line)
+                        if not m:
+                            continue
+                        term, value = m.group(1).strip(), m.group(2).strip()
+                        if not term or not value:
+                            continue
+                        ranges.setdefault(term, set()).add(value)
+
+                ranges_out = {term: sorted(values) for term, values in ranges.items()}
+                solution_data = {
+                    "satisfiable": True,
+                    "status": "range_determined",
+                    "model_count": len(data),
+                    "solution": ranges_out,
                 }
             
         else:

@@ -112,6 +112,11 @@ class IDPModelManager(BaseModelManager):
                 explanation_tuple = theory_instance.explain()
                 result = export_solution(data=explanation_tuple, reasoning_task="explain")
                 
+            elif reasoning_task == "determine_range":
+                generator = model_expand(T, S)
+                models = list(generator)
+                result = export_solution(data=models, reasoning_task=reasoning_task)
+
             else:
                 raise ValueError(f"Reasoning task '{reasoning_task}' is currently not supported.")
             

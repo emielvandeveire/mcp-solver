@@ -93,7 +93,7 @@ IDP-Z3 supports eight distinct forms of reasoning over a knowledge base. Select 
 | **Optimization** | Find the model S of a given T in which a given term t reaches its minimal or maximal value. | "What is the minimum cost / maximum output?" |
 | **Propagation** | Determine which atomic formulas are true or false in all models S of the given theory T. | "What can we conclude with certainty?" |
 | **Explain** | Explains why a model is UNSAT. | CRITICAL: Use this if `model_expand` fails with UNSAT. It returns the exact conflicting facts and laws. |
-| **Determine Range** | Determine the range of possible values for a given function term f given a theory T — the set of all values v such that there exists at least one model S of T in which f evaluates to v. | "What values can X have?" |
+| **Determine Range** | Determine the range of possible values for each function/predicate term given a theory T — the set of all values v such that there exists at least one model S of T in which the term evaluates to v. Call with `reasoning_task: "determine_range"`. Returns a `solution` dict mapping each term to its sorted list of distinct values across all models. | "What values can X have?" |
 | **Relevance** | Determine which symbols σ are relevant, in the sense that there exists a model S of T such that S would no longer be a model if the value of σ in S were different. | "Which inputs actually affect the outcome?" |
 | **Logical Entailment** | Verify whether a given statement φ is logically entailed by theory T. | "Does the knowledge base imply φ?" |
 
