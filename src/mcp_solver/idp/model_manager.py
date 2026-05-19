@@ -63,7 +63,13 @@ class IDPModelManager(BaseModelManager):
                 "message": f"Syntax Error found:\n{err_dict['error_message']}"
             }
 
-    async def solve_model(self, timeout: timedelta, reasoning_task: str = "model_expand") -> dict:
+    async def solve_model(
+        self,
+        timeout: timedelta,
+        reasoning_task: str = "model_expand",
+        term: str | None = None,
+        minimize: bool = True,
+    ) -> dict:
         if not self.code_items:
             result = export_solution(Exception("Model is empty"), reasoning_task)
             self.last_solution = result
@@ -102,10 +108,13 @@ class IDPModelManager(BaseModelManager):
                 result = export_solution(data=models, reasoning_task=reasoning_task)
                 
             elif reasoning_task == "optimize":
-                generator = model_expand(T, S)
-                models = list(generator)
-                optimal_model = [models[-1]] if models else []
-                result = export_solution(data=optimal_model, reasoning_task=reasoning_task)
+                if not term:
+                    raise ValueError(
+                        "Optimization requires a 'term' argument: the numeric expression to optimize."
+                    )
+                theory_instance = Theory(T, S).optimize(term, minimize=minimize)
+                models = [m for m in theory_instance.expand(max=1) if not isinstance(m, str)]
+                result = export_solution(data=models, reasoning_task=reasoning_task)
                 
             elif reasoning_task == "explain":
                 theory_instance = Theory(T, S)

@@ -316,7 +316,7 @@ async def serve() -> None:
                         "pysat": "Solve the current PySAT Python model with a timeout parameter. Required parameter: 'timeout'.",
                         "maxsat": "Solve the current MaxSAT optimization model with a timeout parameter. Required parameter: 'timeout'.",
                         "asp": "Solve the current ASP model with a timeout parameter. Required parameter: 'timeout'.",
-                        "idp": "Solve the current IDP-Z3 model. Required parameter: 'timeout'. Optional parameter: 'reasoning_task' (e.g., 'model_expand', 'propagate', 'satisfiability', 'optimize', 'explain', 'determine_range').",
+                        "idp": "Solve the current IDP-Z3 model. Required parameter: 'timeout'. Optional parameter: 'reasoning_task' (e.g., 'model_expand', 'propagate', 'satisfiability', 'optimize', 'explain', 'determine_range'). When 'reasoning_task' is 'optimize', also provide 'term' (the numeric expression to optimize, e.g. 'cost()') and optionally 'minimize' (boolean, default true).",
                     }
                 ),
                 inputSchema={
@@ -329,6 +329,14 @@ async def serve() -> None:
                         "reasoning_task": {
                             "description": "The specific reasoning task to perform (IDP-Z3 only). Options: 'model_expand', 'propagate', 'satisfiability', 'optimize', 'explain', 'determine_range'. Default is 'model_expand'.",
                             "type": "string",
+                        },
+                        "term": {
+                            "description": "Numeric term to optimize (IDP-Z3 only, required when reasoning_task='optimize'). Example: 'cost()'.",
+                            "type": "string",
+                        },
+                        "minimize": {
+                            "description": "Whether to minimize (true) or maximize (false) the term. Only used when reasoning_task='optimize'. Default: true.",
+                            "type": "boolean",
                         }
                     },
                     "required": ["timeout"],
@@ -523,6 +531,10 @@ async def serve() -> None:
                                 solve_kwargs = {"timeout": timeout_val}
                                 if IDP_MODE and "reasoning_task" in arguments:
                                     solve_kwargs["reasoning_task"] = arguments["reasoning_task"]
+                                if IDP_MODE and "term" in arguments:
+                                    solve_kwargs["term"] = arguments["term"]
+                                if IDP_MODE and "minimize" in arguments:
+                                    solve_kwargs["minimize"] = arguments["minimize"]
 
                                 # Call the model manager to solve the model
                                 result = await model_mgr.solve_model(**solve_kwargs)
